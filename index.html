@@ -111,7 +111,22 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"https://github.com/MatheusRantin/Game_Aula/releases/download/v1.0.0/index","mainPack":"index.pck","experimentalVK":false,"fileSizes":{"index.pck":24119248,"index.wasm":37900721},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async function (resource, options) {
+	const url = typeof resource === 'string' ? resource : resource.url;
+	if (!url.endsWith('index.wasm')) return nativeFetch(resource, options);
+	const parts = await Promise.all([
+		nativeFetch('index.wasm.part1', options),
+		nativeFetch('index.wasm.part2', options),
+	]);
+	if (!parts[0].ok || !parts[1].ok) return new Response(null, { status: 404 });
+	const buffers = await Promise.all(parts.map((part) => part.arrayBuffer()));
+	const combined = new Uint8Array(buffers[0].byteLength + buffers[1].byteLength);
+	combined.set(new Uint8Array(buffers[0]), 0);
+	combined.set(new Uint8Array(buffers[1]), buffers[0].byteLength);
+	return new Response(combined, { status: 200, headers: { 'Content-Type': 'application/wasm' } });
+};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":24119248,"index.wasm":37900721},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
